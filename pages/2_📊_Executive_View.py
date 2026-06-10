@@ -18,7 +18,6 @@ if not df.empty:
     # --- EXECUTIVE HEALTH SUMMARY ---
     st.markdown("### Portfolio Health Summary")
     
-    # Calculate metrics
     total_tasks = len(active_df)
     priority_counts = active_df['priority'].value_counts().reindex(['Urgent', 'High', 'Medium', 'Low'], fill_value=0)
     
@@ -31,14 +30,24 @@ if not df.empty:
 
     st.divider()
 
+    # --- TASKS PER SITE BREAKDOWN ---
+    st.markdown("### Workload Distribution by Site")
+    site_counts = active_df['site_name'].value_counts().reset_index()
+    site_counts.columns = ['Site', 'Task Count']
+    
+    fig = px.bar(site_counts, x='Site', y='Task Count', color='Task Count',
+                 color_continuous_scale='Blues', text='Task Count')
+    fig.update_layout(height=400, margin=dict(t=30, b=30))
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.divider()
+
     # --- DRILL-DOWN SECTION ---
     st.markdown("### Task Drill-Down")
     
-    # Interactive Selection
     task_titles = active_df['title'].tolist()
     selected_title = st.selectbox("Search/Select Task", task_titles)
     
-    # Filter to selected task
     selected_task = active_df[active_df['title'] == selected_title].iloc[0]
     
     with st.container(border=True):
@@ -53,7 +62,6 @@ if not df.empty:
             
         st.markdown("---")
         
-        # Audit Trail & Executive Input
         st.markdown("**Audit Trail**")
         notes_res = supabase.table("task_notes").select("*").eq("task_id", selected_task['id']).order("created_at", desc=True).execute()
         
