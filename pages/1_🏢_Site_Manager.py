@@ -51,4 +51,51 @@ else:
             
             # Here you would query and display the active tasks specifically for `current_site['id']`
             # and provide an interface to add notes to them.
-            st.write("Active tasks will populate here...")
+           # Fetch active tasks for this specific site
+            tasks_response = supabase.table('tasks').select('*').eq('site_id', current_site['id']).neq('status', 'Archived').execute()
+            site_tasks = tasks_response.data
+            
+            if site_tasks:
+                st.markdown("#### Current Tasks")
+                for task in site_tasks:
+                    with st.expander(f"📌 {task['title']} - [{task['status']}]"):
+                        st.write(f"**Description:** {task['description']}")
+                        
+                        # Status Update
+                        col_status, col_empty = st.columns([1, 2])
+                        with col_status:
+                            status_options = ["Not Started", "In Progress", "Blocked", "Completed", "Archived"]
+                            new_status = st.selectbox(
+                                "Update Status", 
+                                status_options, 
+                                index=status_options.index(task['status']), 
+                                key=f"status_{task['id']}"
+                            )
+                            
+                            if new_status != task['status']:
+                                supabase.table('tasks').update({'status': new_status}).eq('id', task['id']).execute()
+                                st.success(f"Task marked as {new_status}!")
+                                st.rerun()
+
+                        st.divider()
+                        
+                        # Dated Notes Section
+                        st.markdown("**Progress Notes**")
+                        notes_response = supabase.table('task_notes').select('*').eq('task_id', task['id']).order('created_at', desc=True).execute()
+                        
+                        for note in notes_response.data:
+                            # Slice the timestamp to show just the date (YYYY-MM-DD)
+                            st.caption(f"Logged on: {note['created_at'][:10]}")
+                            st.info(note['note_content'])
+                        
+                        # Add a new note
+                        new_note = st.text_input("Add a progress update...", key=f"note_input_{task['id']}")
+                        if st.button("Save Note", key=f"save_note_{task['id']}"):
+                            if new_note:
+                                supabase.table('task_notes').insert({
+                                    "task_id": task['id'],
+                                    "note_content": new_note
+                                }).execute()
+                                st.rerun()
+            else:
+                st.info("No active tasks for this site. Enjoy the downtime.")
