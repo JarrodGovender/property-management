@@ -2,42 +2,45 @@ import streamlit as st
 import sys
 import os
 
-# Path Setup
+# --- PATH SETUP ---
 root_dir = os.path.dirname(os.path.abspath(__file__))
 if root_dir not in sys.path:
     sys.path.append(root_dir)
 
 from utils.auth import init_connection, login_user, signup_user
 
+# --- CONFIGURATION ---
 st.set_page_config(page_title="Property Operations Tracker", layout="wide")
 
+# --- SESSION STATE ---
 if 'authenticated' not in st.session_state:
     st.session_state['authenticated'] = False
 if 'user_role' not in st.session_state:
     st.session_state['user_role'] = None
+if 'user_email' not in st.session_state:
+    st.session_state['user_email'] = None
 if 'supabase_client' not in st.session_state:
     st.session_state['supabase_client'] = init_connection()
 
-def main():
-    # --- AUTHENTICATED SIDEBAR ---
-    if st.session_state['authenticated']:
-        with st.sidebar:
-            st.title("Navigation")
-            # This is the new "User Profile" area
-            with st.expander("👤 User Profile"):
-                st.write(f"**Email:** {st.session_state.get('user_email', 'N/A')}")
-                if st.button("Update Password"):
-                    st.info("Password update logic triggered.") # Placeholder
-            
-            st.divider()
-            # Navigation links remain here
-            if st.button("Log Out"):
-                st.session_state['authenticated'] = False
-                st.rerun()
+# --- CSS HELPER ---
+def hide_sidebar():
+    st.markdown(
+        """
+        <style>
+        [data-testid="stSidebar"] {
+            display: none;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
-    # --- LOGIN / SIGNUP VIEW ---
+# --- MAIN LOGIC ---
+def main():
     if not st.session_state['authenticated']:
+        hide_sidebar()
         st.title("Secure Portal Login")
+        
         tab1, tab2 = st.tabs(["Log In", "Sign Up"])
         
         with tab1:
@@ -63,12 +66,30 @@ def main():
                     role = 'executive' if admin_code == "PORTFOLIO2026" else 'manager'
                     user, assigned_role = signup_user(new_email, new_password, role)
                     if user:
-                        st.success("Account created!")
+                        st.success("Account created! Please switch to the Log In tab.")
     
-    # --- AUTHENTICATED MAIN AREA ---
     else:
+        # --- AUTHENTICATED SIDEBAR ---
+        with st.sidebar:
+            st.title("Navigation")
+            with st.expander("👤 User Profile"):
+                st.write(f"**Email:** {st.session_state['user_email']}")
+                if st.button("Update Password"):
+                    st.warning("Password update functionality coming soon.")
+            
+            st.divider()
+            if st.button("Log Out"):
+                st.session_state['authenticated'] = False
+                st.session_state['user_role'] = None
+                st.session_state['user_email'] = None
+                st.rerun()
+        
+        # --- MAIN VIEW ---
         st.title("Dashboard Overview")
-        st.write("Welcome to the Property Operations Tracker.")
+        if st.session_state['user_role'] == 'executive':
+            st.success("Executive Access Granted")
+        else:
+            st.info("Property Manager Access")
 
 if __name__ == "__main__":
     main()
