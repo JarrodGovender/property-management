@@ -1,1 +1,6 @@
-
+streamlit
+pandas
+supabase
+pytz
+xlsxwriter
+fpdf
