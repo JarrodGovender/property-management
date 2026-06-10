@@ -1,1 +1,54 @@
+import streamlit as st
+from utils.db import fetch_all_sites
 
+supabase = st.session_state.get('supabase_client')
+
+st.title("Property Site Manager")
+
+# Fetch dynamic sites
+sites = fetch_all_sites(supabase)
+
+if not sites:
+    st.warning("No sites configured. Please add sites to the database.")
+else:
+    # Extract names and create dynamic tabs
+    site_names = [site['name'] for site in sites]
+    site_tabs = st.tabs(site_names)
+    
+    for index, tab in enumerate(site_tabs):
+        with tab:
+            current_site = sites[index]
+            st.markdown(f"### Manage Operations: {current_site['name']}")
+            
+            # Form to add a new task for this specific site
+            with st.expander(f"➕ Add New Task for {current_site['name']}", expanded=False):
+                with st.form(key=f"form_{current_site['id']}"):
+                    task_title = st.text_input("Task Title")
+                    task_desc = st.text_area("Description")
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        task_priority = st.selectbox("Priority", ["Low", "Medium", "High", "Urgent"])
+                    with col2:
+                        task_status = st.selectbox("Status", ["Not Started", "In Progress", "Blocked", "Completed"])
+                        
+                    submit_task = st.form_submit_button("Create Task")
+                    
+                    if submit_task and task_title:
+                        # Insert into Supabase
+                        data, count = supabase.table('tasks').insert({
+                            "site_id": current_site['id'],
+                            "title": task_title,
+                            "description": task_desc,
+                            "priority": task_priority,
+                            "status": task_status
+                            # 'created_by' would use st.session_state['user_id']
+                        }).execute()
+                        st.success("Task added successfully!")
+                        st.rerun()
+
+            st.divider()
+            
+            # Here you would query and display the active tasks specifically for `current_site['id']`
+            # and provide an interface to add notes to them.
+            st.write("Active tasks will populate here...")
