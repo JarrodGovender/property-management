@@ -1,14 +1,14 @@
 import streamlit as st
 from utils.db import fetch_all_sites
 
-# Configure page for 16:9 professional viewing
+# Professional 16:9 configuration
 st.set_page_config(page_title="Site Manager", layout="wide")
 
 supabase = st.session_state.get('supabase_client')
 
 st.title("🏢 Dealership Site Operations")
 
-# 1. Fetch sites dynamically
+# 1. Fetch sites dynamically from database
 sites = fetch_all_sites(supabase)
 
 if not sites:
@@ -24,7 +24,7 @@ else:
             st.subheader(f"Operations: {site['name']}")
             
             # 3. Add Task Interface
-            with st.expander("➕ Create New Task"):
+            with st.expander("➕ Create New Task", expanded=False):
                 with st.form(f"task_form_{site['id']}"):
                     col1, col2 = st.columns(2)
                     with col1:
@@ -45,7 +45,7 @@ else:
                         st.success("Task created!")
                         st.rerun()
 
-            # 4. Display Active Tasks for this site
+            # 4. Display Active Tasks and Audit Trail
             st.markdown("---")
             tasks_res = supabase.table("tasks").select("*").eq("site_id", site['id']).neq("status", "Archived").execute()
             
@@ -59,11 +59,31 @@ else:
                         with col2:
                             st.write(f"Priority: {task['priority']}")
                         with col3:
-                            new_status = st.selectbox("Status", ["Not Started", "In Progress", "Blocked", "Completed", "Archived"], 
-                                                      index=["Not Started", "In Progress", "Blocked", "Completed", "Archived"].index(task['status']),
-                                                      key=f"status_{task['id']}")
+                            status_options = ["Not Started", "In Progress", "Blocked", "Completed", "Archived"]
+                            new_status = st.selectbox(
+                                "Status", 
+                                status_options, 
+                                index=status_options.index(task['status']), 
+                                key=f"status_{task['id']}"
+                            )
                             if new_status != task['status']:
                                 supabase.table("tasks").update({"status": new_status}).eq("id", task['id']).execute()
+                                st.rerun()
+                        
+                        # --- AUDIT TRAIL / NOTES SECTION ---
+                        st.markdown("**Audit Trail & Progress Notes**")
+                        notes_res = supabase.table("task_notes").select("*").eq("task_id", task['id']).order("created_at", desc=True).execute()
+                        
+                        for note in notes_res.data:
+                            st.caption(f"📅 {note['created_at'][:10]} | {note['note_content']}")
+                        
+                        new_note = st.text_input("Add a progress note...", key=f"note_input_{task['id']}")
+                        if st.button("Post Note", key=f"post_{task['id']}"):
+                            if new_note:
+                                supabase.table("task_notes").insert({
+                                    "task_id": task['id'],
+                                    "note_content": new_note
+                                }).execute()
                                 st.rerun()
             else:
                 st.info("No active tasks for this site.")
