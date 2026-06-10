@@ -37,14 +37,35 @@ def main():
                     else:
                         st.error("Invalid credentials.")
                         
-        with tab2:
-             with st.form("signup_form"):
+
+with tab2:
+            st.markdown("### Register New Account")
+            with st.form("signup_form"):
                 new_email = st.text_input("Email")
-                new_password = st.text_input("Password", type="password")
-                admin_code = st.text_input("Admin Invite Code (Optional)", type="password")
-                signup_submit = st.form_submit_button("Sign Up")
-                # Handle signup logic here
+                new_password = st.text_input("Password", type="password", help="Must be at least 6 characters.")
                 
+                # The invite code determines the user's role
+                admin_code = st.text_input("Executive Invite Code (Optional)", type="password", help="Leave blank for standard Property Manager access.")
+                
+                signup_submit = st.form_submit_button("Create Account")
+                
+                if signup_submit:
+                    if new_email and new_password:
+                        # Define the secret code (In production, move this to secrets.toml)
+                        SECRET_EXECUTIVE_CODE = "PORTFOLIO2026" 
+                        
+                        assigned_role = 'manager'
+                        if admin_code == SECRET_EXECUTIVE_CODE:
+                            assigned_role = 'executive'
+                            
+                        # Call the backend function
+                        user, role = signup_user(new_email, new_password, assigned_role)
+                        
+                        if user:
+                            st.success(f"Account created successfully as {assigned_role.capitalize()}! Please switch to the Log In tab.")
+                    else:
+                        st.warning("Please provide both an email and a password.")
+    
     else:
         st.sidebar.success(f"Logged in successfully.")
         if st.sidebar.button("Log Out"):
