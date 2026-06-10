@@ -1,52 +1,56 @@
 import streamlit as st
-import plotly.express as px
+import pandas as pd
 from utils.db import get_tasks_with_sites
 
-# Initialize Supabase client (ensure it's in your session state or imported)
+# Professional 16:9 configuration
+st.set_page_config(page_title="Executive Overview", layout="wide")
+
 supabase = st.session_state.get('supabase_client')
 
-st.title("Executive Overview")
-st.markdown("### Portfolio Task Distribution")
+st.title("📊 Executive Overview")
 
-# Fetch Data
+# 1. Fetch data
 df = get_tasks_with_sites(supabase)
 
-if df.empty:
-    st.info("No active tasks found in the database. Head to the Site Manager to add tasks.")
-else:
-    # Filter out archived tasks for the live dashboard
+if not df.empty:
     active_df = df[df['status'] != 'Archived']
-
-    # --- PRIORITY METRIC: Tasks per Site ---
-    # Group by site and status to get task counts
-    site_task_counts = active_df.groupby(['site_name', 'status']).size().reset_index(name='task_count')
     
-    # Create an interactive Plotly stacked bar chart
-    fig = px.bar(
-        site_task_counts, 
-        x='site_name', 
-        y='task_count', 
-        color='status',
-        title="Active Tasks by Property Site",
-        labels={'site_name': 'Property', 'task_count': 'Number of Tasks', 'status': 'Task Status'},
-        color_discrete_map={
-            'Not Started': '#6c757d',
-            'In Progress': '#0d6efd',
-            'Blocked': '#dc3545',
-            'Completed': '#198754'
-        }
-    )
+    st.markdown("### Portfolio Task Drill-Down")
+    st.write("Select a task below to view the audit trail and post executive updates.")
+
+    # 2. Interactive Selection
+    task_titles = active_df['title'].tolist()
+    selected_title = st.selectbox("Search/Select Task", task_titles)
     
-    # Optimize layout for 16:9 executive viewing
-    fig.update_layout(barmode='stack', xaxis={'categoryorder':'total descending'}, height=500)
-    st.plotly_chart(fig, use_container_width=True)
-
-    st.divider()
-
-    # Raw Data Table for deeper inspection
-    st.markdown("### Active Task Details")
-    st.dataframe(
-        active_df[['site_name', 'title', 'status', 'priority', 'created_at']],
-        use_container_width=True,
-        hide_index=True
-    )
+    # 3. Filter to the selected task
+    selected_task = active_df[active_df['title'] == selected_title].iloc[0]
+    
+    with st.container(border=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader(selected_task['title'])
+            st.write(f"**Site:** {selected_task['site_name']}")
+            st.write(f"**Description:** {selected_task['description']}")
+        with col2:
+            st.info(f"**Status:** {selected_task['status']}")
+            st.write(f"**Priority:** {selected_task['priority']}")
+            
+        st.markdown("---")
+        
+        # 4. Audit Trail & Executive Input
+        st.markdown("**Audit Trail**")
+        notes_res = supabase.table("task_notes").select("*").eq("task_id", selected_task['id']).order("created_at", desc=True).execute()
+        
+        for note in notes_res.data:
+            st.caption(f"📅 {note['created_at'][:10]} | {note['note_content']}")
+            
+        new_note = st.text_input("Post Executive Note", key="exec_note")
+        if st.button("Submit Executive Update"):
+            if new_note:
+                supabase.table("task_notes").insert({
+                    "task_id": selected_task['id'],
+                    "note_content": f"[EXEC NOTE] {new_note}"
+                }).execute()
+                st.rerun()
+else:
+    st.info("No active tasks found in the database.")
