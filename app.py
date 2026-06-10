@@ -1,11 +1,11 @@
+import streamlit as st
 import sys
 import os
+
+# 1. Force Python to recognize the root directory as a path source
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Now your imports will work:
-from utils.auth import init_connection, login_user, signup_user
-
-import streamlit as st
+# 2. Now import your modules
 from utils.auth import init_connection, login_user, signup_user
 
 # --- PAGE CONFIGURATION ---
@@ -77,15 +77,14 @@ def main():
             st.rerun()
             
         st.title("Dashboard Overview")
-        st.write("Welcome to the Property Operations Tracker.")
         
         # NAVIGATION BASED ON ROLE
         if st.session_state['user_role'] == 'executive':
-            st.subheader("Executive Controls")
-            st.write("Accessing full portfolio analytics and archive.")
+            st.success("Executive Access Granted")
+            st.write("You have full access to the Executive Overview and Archive pages via the sidebar.")
         else:
-            st.subheader("Manager Controls")
-            st.write("Accessing site-specific management tools.")
+            st.info("Property Manager Access")
+            st.write("Use the 'Site Manager' tab in the sidebar to manage your specific properties.")
 
 if __name__ == "__main__":
     main()
