@@ -1,3 +1,10 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+# Now your imports will work:
+from utils.auth import init_connection, login_user, signup_user
+
 import streamlit as st
 from utils.auth import init_connection, login_user, signup_user
 
