@@ -1,28 +1,44 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 from utils.db import get_tasks_with_sites
 
-# Professional 16:9 configuration
 st.set_page_config(page_title="Executive Overview", layout="wide")
 
 supabase = st.session_state.get('supabase_client')
 
 st.title("📊 Executive Overview")
 
-# 1. Fetch data
+# Fetch data
 df = get_tasks_with_sites(supabase)
 
 if not df.empty:
     active_df = df[df['status'] != 'Archived']
-    
-    st.markdown("### Portfolio Task Drill-Down")
-    st.write("Select a task below to view the audit trail and post executive updates.")
 
-    # 2. Interactive Selection
+    # --- EXECUTIVE HEALTH SUMMARY ---
+    st.markdown("### Portfolio Health Summary")
+    
+    # Calculate metrics
+    total_tasks = len(active_df)
+    priority_counts = active_df['priority'].value_counts().reindex(['Urgent', 'High', 'Medium', 'Low'], fill_value=0)
+    
+    col1, col2, col3, col4, col5 = st.columns(5)
+    col1.metric("Total Active Tasks", total_tasks)
+    col2.metric("Urgent", priority_counts['Urgent'])
+    col3.metric("High", priority_counts['High'])
+    col4.metric("Medium", priority_counts['Medium'])
+    col5.metric("Low", priority_counts['Low'])
+
+    st.divider()
+
+    # --- DRILL-DOWN SECTION ---
+    st.markdown("### Task Drill-Down")
+    
+    # Interactive Selection
     task_titles = active_df['title'].tolist()
     selected_title = st.selectbox("Search/Select Task", task_titles)
     
-    # 3. Filter to the selected task
+    # Filter to selected task
     selected_task = active_df[active_df['title'] == selected_title].iloc[0]
     
     with st.container(border=True):
@@ -37,7 +53,7 @@ if not df.empty:
             
         st.markdown("---")
         
-        # 4. Audit Trail & Executive Input
+        # Audit Trail & Executive Input
         st.markdown("**Audit Trail**")
         notes_res = supabase.table("task_notes").select("*").eq("task_id", selected_task['id']).order("created_at", desc=True).execute()
         
@@ -53,4 +69,4 @@ if not df.empty:
                 }).execute()
                 st.rerun()
 else:
-    st.info("No active tasks found in the database.")
+    st.info("No active tasks found in the database. Head to the Site Manager to begin operations.")
