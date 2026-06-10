@@ -2,11 +2,26 @@ import streamlit as st
 import sys
 import os
 
-# 1. Force Python to recognize the root directory as a path source
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# --- DEBUGGING & PATH SETUP ---
+# Ensure the root directory is in the path so Python can find 'utils'
+root_dir = os.path.dirname(os.path.abspath(__file__))
+if root_dir not in sys.path:
+    sys.path.append(root_dir)
 
-# 2. Now import your modules
-from utils.auth import init_connection, login_user, signup_user
+# Attempt import with error reporting
+try:
+    from utils.auth import init_connection, login_user, signup_user
+except ImportError as e:
+    st.error("CRITICAL IMPORT ERROR")
+    st.write(f"Error details: {e}")
+    st.write("---")
+    st.write("Current path:", sys.path)
+    st.write("Root directory contents:", os.listdir(root_dir))
+    if 'utils' in os.listdir(root_dir):
+        st.write("Utils directory contents:", os.listdir(os.path.join(root_dir, 'utils')))
+    else:
+        st.error("The 'utils' folder was NOT found in the root directory.")
+    st.stop()
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -81,7 +96,7 @@ def main():
         # NAVIGATION BASED ON ROLE
         if st.session_state['user_role'] == 'executive':
             st.success("Executive Access Granted")
-            st.write("You have full access to the Executive Overview and Archive pages via the sidebar.")
+            st.write("You have full access to the Executive Overview and Archive pages.")
         else:
             st.info("Property Manager Access")
             st.write("Use the 'Site Manager' tab in the sidebar to manage your specific properties.")
